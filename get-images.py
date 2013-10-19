@@ -33,48 +33,47 @@ def hasRS(pth):
     rs = filter(f,files)
     return rs
         
-def getT1(pth, pair):
-    os.chdir('/mnt/macdata/projects/images/' + getRange(pair[0]) + "/" + pair[0] + "/" + dateSL2Images(pair[1]))
+def getT1(pth, pidn, date):
+    os.chdir('/mnt/macdata/projects/images/' + getRange(pidn) + "/" + pidn + "/" + dateSL2Images(date))
     for f in os.listdir('.'): # cd to files
             if os.path.isdir(f):
                     os.chdir(f)
     try:
         os.system("cp MP-LAS*.* " + pth)
     except:
-        log[str(pair[0])] += 'XT'
+        log[str(pidn)] += 'XT'
     else:
-        log[str(pair[0])] += 'T'
+        log[str(pidn)] += 'T'
         
-def getFLAIR(pth, pair):
-    os.chdir('/mnt/macdata/projects/images/' + getRange(pair[0]) + "/" + pair[0] + "/" + dateSL2Images(pair[1]))
+def getFLAIR(pth, pidn, date):
+    os.chdir('/mnt/macdata/projects/images/' + getRange(pidn) + "/" + pidn + "/" + dateSL2Images(date))
     for f in os.listdir('.'): # cd to files
             if os.path.isdir(f):
                     os.chdir(f)
     try:
         os.system("cp FLAIR*.* " + pth)
     except:
-        log[str(pair[0])] += 'XF'
+        log[str(pidn)] += 'XF'
     else:
-        log[str(pair[0])] += 'F'
+        log[str(pidn)] += 'F'
         
-def getRS(pth, pair):
-    os.chdir('/mnt/macdata/projects/images/' + getRange(pair[0]) + "/" + pair[0] + "/" + dateSL2Images(pair[1]))
+def getRS(pth, pidn, date):
+    os.chdir('/mnt/macdata/projects/images/' + getRange(pidn) + "/" + pidn + "/" + dateSL2Images(date))
     for f in os.listdir('.'): # cd to files
             if os.path.isdir(f):
                     os.chdir(f)
     try:
         os.system("cp rsfMRI*.zip " + pth)
     except:
-        log[str(pair[0])] += 'XR'
+        log[str(pidn)] += 'XR'
     else:    
-        log[str(pair[0])] += 'R'
+        log[str(pidn)] += 'R'
         
-def getRange(PIDN):
-    PIDN = int(PIDN)
-    if PIDN<1000:
+def getRange(pidn):
+    if int(pidn)<1000:
         return "0000-0999"
     else:
-        low = int(math.floor(PIDN/1000.0)) * 1000
+        low = int(math.floor(pidn/1000.0)) * 1000
         return str(low) + "-" + str(low+999)
         
 
@@ -94,23 +93,34 @@ for d in data:
 # search seeley server for images & copy over
 
 for pair in images:
-    pth = "/data6/controlNIC/" + pair[0]
+    pidn, date = pair
+    pth = "/data6/controlNIC/" + pidn
     if not os.path.exists(pth): # if no data for subject
         os.mkdir(pth) # add subject to SL
-    if not os.path.exists(pth + "/" + pair[0] + "_" + pair[1] + "/"): # if no scan at this date in SL
-        os.mkdir(pth + "/" + pair[0] + "_" + pair[1] + "/") # add to subj's SL folder
-    # HANDLE RS    
-    if not os.path.exists(pth + "/" + pair[0] + "_" + pair[1] + "/raw/"): # if no RS folder for scan at this date
-        os.mkdir(pth + "/" + pair[0] + "_" + pair[1] + "/raw/") # add raw data folder
-    if not hasRS(pth + "/" + pair[0] + "_" + pair[1] + "/raw/"): # has a raw folder, but no RS in the folder
-        getRS(pth + "/" + pair[0] + "_" + pair[1] + "/raw/", pair) # copy resting state to raw folder
+    pth += pidn + "/"
+    if not os.path.exists(pth + pidn + "_" + date + "/"): # if no scan at this date in SL
+        os.mkdir(pth + ) # add to subj's SL folder
+    pth += pidn + "_" + date + "/"    
+    
+    f = os.listdir('.')
+    rs_dir = filter(lambda x: not('._' in x) and ('images' in x), f)
+    
+    #os.path.exists(pth + "rsfmri_new/nii/")
+    #os.path.exists(pth + "rsfmri_new/rsfmri_closed/nii/")
+    
+    # HANDLE RS
+    if not os.path.exists(pth + "raw/"): # if no RS folder for scan at this date
+        os.mkdir(pth + "raw/") # add raw data folder
+    if not hasRS(pth + "raw/"): # has a raw folder, but no RS in the folder
+        getRS(pth + "raw/", pidn, date) # copy resting state to raw folder
         # unzip it
-        os.chdir(pth + "/" + pair[0] + "_" + pair[1] + "/raw/")
-        os.system("unzip *vS2*.zip")
-        os.system("unzip *vH1*.zip")
+        os.chdir(pth + "raw/")
+        if os.system("ls | grep .zip") == 0:
+            os.system("unzip *vS2*.zip")
+            os.system("unzip *vH1*.zip")
         for f in os.listdir('.'): # cd to files
                 if os.path.isdir(f):
-                        os.chdir(f)
+                    os.chdir(f)
         # convert dcm2nii; can check for .dcm v .IMA, .-
         os.system("dcm2nii -c n -d n -e n -f n -g n -i n -p y -n y -r n *.dcm")
         os.system("fslsplit *.nii")
@@ -119,25 +129,21 @@ for pair in images:
         os.system("mkdir ../../rsfmri/nii")
         os.system("cp vol*.nii ../../rsfmri/nii")
         
-    # HANDLE STRUC    
-    if not os.path.exists(pth + "/" + pair[0] + "_" + pair[1] + "/struc/"):
-        os.mkdir(pth + "/" + pair[0] + "_" + pair[1] + "/struc/")
+    # /struc
+    if not os.path.exists(pth "struc/"):
+        os.mkdir(pth + "struc/")
     # T1
-    if not hasT1(pth + "/" + pair[0] + "_" + pair[1] + "/struc/"):
-        getT1(pth + "/" + pair[0] + "_" + pair[1] + "/struc/", pair) # copy T1 over from Images
+    if not hasT1(pth + "struc/"):
+        getT1(pth + "struc/", pidn, date) # copy T1 over from Images
     # FLAIR
-    if not hasFLAIR(pth + "/" + pair[0] + "_" + pair[1] + "/struc/"):
-        getFLAIR(pth + "/" + pair[0] + "_" + pair[1] + "/struc/", pair) # copy FLAIR over from Images
-        
-        
-        
-        
-        
+    if not hasFLAIR(pth + "struc/"):
+        getFLAIR(pth + "struc/", pidn, date) # copy FLAIR over from Images
         
         # check for rsfmri(_new/rsfmri_closed) folder, nii folder -- make if necessary. move .niis
-        #if os.path.exists(pth + "/" + pair[0] + "_" + pair[1] + "/rsfmri_new"):
-        #    if os.path.exists(pth _ "/" + pair[0] + "_" + pair[1] + "rsfmri_new/nii")
+        #if os.path.exists(pth + "/" + pidn + "_" + date + "/rsfmri_new"):
+        #    if os.path.exists(pth _ "/" + pidn + "_" + date + "rsfmri_new/nii")
         
+        # eventually add a check for already preprocessed files
         
      #save log
 w = csv.writer(open("/data/mridata/akhazenzon/scripts/getImages/ImageImport_" + time + ".csv", "w"))
